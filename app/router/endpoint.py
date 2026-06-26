@@ -99,17 +99,6 @@ async def upload_document_to_default_knowledge_base(
 
 
 @router.get(
-    "/jobs/{job_id}",
-    summary="Get indexing job status using default index",
-)
-def get_default_index_job_status(job_id: str):
-    try:
-        return get_service().get_index_job_status(index_id=None, job_id=job_id)
-    except BailianServiceError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
-
-
-@router.get(
     "/documents/list",
     summary="List indexed documents using default index",
 )

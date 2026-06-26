@@ -85,46 +85,6 @@
         }
       }
     },
-    "/knowledge-bases/jobs/{job_id}": {
-      "get": {
-        "tags": [
-          "knowledge-bases"
-        ],
-        "summary": "Get indexing job status using default index",
-        "operationId": "get_default_index_job_status_knowledge_bases_jobs__job_id__get",
-        "parameters": [
-          {
-            "name": "job_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Job Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/knowledge-bases/documents/list": {
       "get": {
         "tags": [
