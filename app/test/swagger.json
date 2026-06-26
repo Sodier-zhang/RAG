@@ -1,0 +1,566 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Bailian Knowledge Base Service",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/knowledge-bases": {
+      "post": {
+        "tags": [
+          "knowledge-bases"
+        ],
+        "summary": "Create knowledge base",
+        "description": "Create a Bailian document retrieval knowledge base. By default it uses smart chunking with chunk_size=1500 and overlap_size=200. If category_id is omitted, the service creates an empty category first and then creates the knowledge base.",
+        "operationId": "create_knowledge_base_knowledge_bases_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateKnowledgeBaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/knowledge-bases/documents": {
+      "post": {
+        "tags": [
+          "knowledge-bases"
+        ],
+        "summary": "Upload document using default index",
+        "description": "Upload a local file into the knowledge base specified by BAILIAN_INDEX_ID, INDEX_ID, or IndexID in the environment. This upload flow follows the Bailian document example and uses category_id=default by default. Leave chunk_mode empty for smart chunking; only set separator when chunk_mode is regex.",
+        "operationId": "upload_document_to_default_knowledge_base_knowledge_bases_documents_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_document_to_default_knowledge_base_knowledge_bases_documents_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/knowledge-bases/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "knowledge-bases"
+        ],
+        "summary": "Get indexing job status using default index",
+        "operationId": "get_default_index_job_status_knowledge_bases_jobs__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/knowledge-bases/documents/list": {
+      "get": {
+        "tags": [
+          "knowledge-bases"
+        ],
+        "summary": "List indexed documents using default index",
+        "operationId": "list_default_index_documents_knowledge_bases_documents_list_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/knowledge-bases/retrieve": {
+      "post": {
+        "tags": [
+          "knowledge-bases"
+        ],
+        "summary": "Retrieve using default index",
+        "operationId": "retrieve_with_default_index_knowledge_bases_retrieve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrieveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "health_check__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_upload_document_to_default_knowledge_base_knowledge_bases_documents_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id",
+            "default": "default"
+          },
+          "category_type": {
+            "type": "string",
+            "title": "Category Type",
+            "default": "UNSTRUCTURED"
+          },
+          "parser": {
+            "type": "string",
+            "title": "Parser",
+            "default": "AUTO_SELECT"
+          },
+          "original_file_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original File Url"
+          },
+          "wait_for_finish": {
+            "type": "boolean",
+            "title": "Wait For Finish",
+            "default": true
+          },
+          "poll_interval_seconds": {
+            "type": "integer",
+            "title": "Poll Interval Seconds",
+            "default": 3
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "title": "Timeout Seconds",
+            "default": 300
+          },
+          "chunk_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Size",
+            "default": 1500
+          },
+          "overlap_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overlap Size",
+            "default": 200
+          },
+          "chunk_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Mode"
+          },
+          "separator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Separator"
+          },
+          "enable_headers": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enable Headers",
+            "default": false
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_document_to_default_knowledge_base_knowledge_bases_documents_post"
+      },
+      "CreateKnowledgeBaseRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Name",
+            "description": "Knowledge base name."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Knowledge base description."
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id",
+            "description": "Optional existing category ID. Leave empty to auto-create a category."
+          },
+          "chunk_size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 6000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Size",
+            "description": "Default chunk size. 1500 is recommended for your current workflow.",
+            "default": 1500
+          },
+          "overlap_size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1024.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overlap Size",
+            "description": "Default overlap size between adjacent chunks.",
+            "default": 200
+          },
+          "chunk_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Mode",
+            "description": "Leave empty to use smart chunking."
+          },
+          "separator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Separator",
+            "description": "Only used when chunk_mode is regex."
+          },
+          "enable_headers": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enable Headers",
+            "description": "Enable only for Excel files with header rows.",
+            "default": false
+          },
+          "embedding_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding Model Name",
+            "description": "Embedding model used by the knowledge base.",
+            "default": "text-embedding-v4"
+          },
+          "rerank_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerank Model Name",
+            "description": "Rerank model used during retrieval.",
+            "default": "qwen3-rerank"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "CreateKnowledgeBaseRequest"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "RetrieveRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Query"
+          },
+          "dense_similarity_top_k": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Dense Similarity Top K",
+            "default": 5
+          },
+          "sparse_similarity_top_k": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Sparse Similarity Top K",
+            "default": 5
+          },
+          "rerank_top_n": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Rerank Top N",
+            "default": 5
+          },
+          "enable_reranking": {
+            "type": "boolean",
+            "title": "Enable Reranking",
+            "default": true
+          },
+          "enable_rewrite": {
+            "type": "boolean",
+            "title": "Enable Rewrite",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "RetrieveRequest"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
