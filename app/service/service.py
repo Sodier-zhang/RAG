@@ -136,7 +136,7 @@ class BailianKnowledgeBaseService:
         chunk_mode: str | None = None,
         separator: str | None = None,
         enable_headers: bool | None = None,
-        wait_for_finish: bool = True,
+        wait_for_finish: bool = False,
         poll_interval_seconds: int = 3,
         timeout_seconds: int = 300,
     ) -> dict[str, Any]:

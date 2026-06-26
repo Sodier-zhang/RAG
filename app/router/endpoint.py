@@ -53,7 +53,7 @@ async def create_knowledge_base(payload: CreateKnowledgeBaseRequest):
 @router.post(
     "/documents",
     summary="Upload document using default index",
-    description="Upload a local file into the knowledge base specified by BAILIAN_INDEX_ID, INDEX_ID, or IndexID in the environment. This upload flow follows the Bailian document example and uses category_id=default by default. Leave chunk_mode empty for smart chunking; only set separator when chunk_mode is regex.",
+    description="Upload a local file into the knowledge base specified by BAILIAN_INDEX_ID, INDEX_ID, or IndexID in the environment. This upload flow follows the Bailian document example and uses category_id=default by default. By default the API returns immediately after submitting the indexing job; set wait_for_finish=true only when you want to block until parsing completes. Leave chunk_mode empty for smart chunking; only set separator when chunk_mode is regex.",
 )
 async def upload_document_to_default_knowledge_base(
     file: UploadFile = File(...),
@@ -61,7 +61,7 @@ async def upload_document_to_default_knowledge_base(
     category_type: str = Form("UNSTRUCTURED"),
     parser: str = Form("AUTO_SELECT"),
     original_file_url: str | None = Form(default=None),
-    wait_for_finish: bool = Form(True),
+    wait_for_finish: bool = Form(False),
     poll_interval_seconds: int = Form(3),
     timeout_seconds: int = Form(300),
     chunk_size: int | None = Form(default=1500),

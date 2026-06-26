@@ -51,7 +51,7 @@
           "knowledge-bases"
         ],
         "summary": "Upload document using default index",
-        "description": "Upload a local file into the knowledge base specified by BAILIAN_INDEX_ID, INDEX_ID, or IndexID in the environment. This upload flow follows the Bailian document example and uses category_id=default by default. Leave chunk_mode empty for smart chunking; only set separator when chunk_mode is regex.",
+        "description": "Upload a local file into the knowledge base specified by BAILIAN_INDEX_ID, INDEX_ID, or IndexID in the environment. This upload flow follows the Bailian document example and uses category_id=default by default. By default the API returns immediately after submitting the indexing job; set wait_for_finish=true only when you want to block until parsing completes. Leave chunk_mode empty for smart chunking; only set separator when chunk_mode is regex.",
         "operationId": "upload_document_to_default_knowledge_base_knowledge_bases_documents_post",
         "requestBody": {
           "content": {
@@ -205,7 +205,7 @@
           "wait_for_finish": {
             "type": "boolean",
             "title": "Wait For Finish",
-            "default": true
+            "default": false
           },
           "poll_interval_seconds": {
             "type": "integer",
