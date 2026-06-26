@@ -1,17 +1,16 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
-import os
-import tempfile
-import time
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import requests
-from alibabacloud_bailian20231229.client import Client as BailianClient
 from alibabacloud_bailian20231229 import models
+from alibabacloud_bailian20231229.client import Client as BailianClient
 from alibabacloud_tea_openapi import models as open_api_models
+
+from app.config import AppConfig, get_config
 
 
 class BailianServiceError(Exception):
@@ -21,52 +20,12 @@ class BailianServiceError(Exception):
         self.status_code = status_code
 
 
-@dataclass(slots=True)
-class BailianSettings:
-    access_key_id: str
-    access_key_secret: str
-    workspace_id: str
-    region_id: str = "cn-beijing"
-    default_index_id: str | None = None
-    default_category_id: str | None = None
-
-    @classmethod
-    def from_env(cls) -> "BailianSettings":
-        access_key_id = os.getenv("BAILIAN_ACCESS_KEY_ID") or os.getenv("ALIBABA_CLOUD_ACCESS_KEY_ID")
-        access_key_secret = os.getenv("BAILIAN_ACCESS_KEY_SECRET") or os.getenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET")
-        workspace_id = os.getenv("BAILIAN_WORKSPACE_ID") or os.getenv("WORKSPACE_ID")
-        region_id = os.getenv("BAILIAN_REGION_ID", "cn-beijing")
-        default_index_id = os.getenv("BAILIAN_INDEX_ID") or os.getenv("INDEX_ID") or os.getenv("IndexID")
-        default_category_id = os.getenv("BAILIAN_CATEGORY_ID") or os.getenv("CATEGORY_ID") or os.getenv("CategoryID")
-
-        missing = [
-            name
-            for name, value in {
-                "BAILIAN_ACCESS_KEY_ID or ALIBABA_CLOUD_ACCESS_KEY_ID": access_key_id,
-                "BAILIAN_ACCESS_KEY_SECRET or ALIBABA_CLOUD_ACCESS_KEY_SECRET": access_key_secret,
-                "BAILIAN_WORKSPACE_ID or WORKSPACE_ID": workspace_id,
-            }.items()
-            if not value
-        ]
-        if missing:
-            raise BailianServiceError(
-                f"Missing required environment variables: {', '.join(missing)}",
-                status_code=500,
-            )
-
-        return cls(
-            access_key_id=access_key_id,
-            access_key_secret=access_key_secret,
-            workspace_id=workspace_id,
-            region_id=region_id,
-            default_index_id=default_index_id,
-            default_category_id=default_category_id,
-        )
-
-
 class BailianKnowledgeBaseService:
-    def __init__(self, settings: BailianSettings | None = None):
-        self.settings = settings or BailianSettings.from_env()
+    def __init__(self, settings: AppConfig | None = None):
+        try:
+            self.settings = settings or get_config()
+        except ValueError as exc:
+            raise BailianServiceError(str(exc), status_code=500) from exc
         self.client = BailianClient(
             open_api_models.Config(
                 access_key_id=self.settings.access_key_id,
@@ -106,7 +65,7 @@ class BailianKnowledgeBaseService:
             )
         return normalized
 
-    def create_knowledge_base(
+    async def create_knowledge_base(
         self,
         *,
         name: str,
@@ -120,7 +79,7 @@ class BailianKnowledgeBaseService:
         embedding_model_name: str | None = None,
         rerank_model_name: str | None = None,
     ) -> dict[str, Any]:
-        target_category_id = category_id or self.create_empty_category(name)
+        target_category_id = category_id or await self.create_empty_category(name)
         request = models.CreateIndexRequest(
             name=name,
             description=description,
@@ -136,7 +95,7 @@ class BailianKnowledgeBaseService:
             embedding_model_name=embedding_model_name,
             rerank_model_name=rerank_model_name,
         )
-        response = self.client.create_index(self.settings.workspace_id, request)
+        response = await self.client.create_index_async(self.settings.workspace_id, request)
         body = self._ensure_success(response.body, "CreateIndex")
         return {
             "index_id": body.data.id,
@@ -151,17 +110,17 @@ class BailianKnowledgeBaseService:
             return self.settings.default_category_id
         return "default"
 
-    def create_empty_category(self, base_name: str) -> str:
+    async def create_empty_category(self, base_name: str) -> str:
         category_name = self._build_category_name(base_name)
         request = models.AddCategoryRequest(
             category_name=category_name,
             category_type="UNSTRUCTURED",
         )
-        response = self.client.add_category(self.settings.workspace_id, request)
+        response = await self.client.add_category_async(self.settings.workspace_id, request)
         body = self._ensure_success(response.body, "AddCategory")
         return body.data.category_id
 
-    def upload_file_and_add_to_index(
+    async def upload_file_and_add_to_index(
         self,
         *,
         index_id: str | None,
@@ -191,14 +150,14 @@ class BailianKnowledgeBaseService:
         if chunk_mode != "regex":
             separator = None
 
-        lease = self._apply_file_upload_lease(
+        lease = await self._apply_file_upload_lease(
             category_id=upload_category_id,
             category_type=category_type,
             file_name=file_name,
             file_bytes=file_bytes,
         )
-        self._upload_file_to_lease(file_bytes=file_bytes, lease=lease)
-        file_id = self._add_file_record(
+        await self._upload_file_to_lease(file_bytes=file_bytes, lease=lease)
+        file_id = await self._add_file_record(
             category_id=upload_category_id,
             category_type=category_type,
             lease_id=lease.file_upload_lease_id,
@@ -206,7 +165,7 @@ class BailianKnowledgeBaseService:
             tags=tags,
             original_file_url=original_file_url,
         )
-        job_id = self._submit_index_add_documents_job(
+        job_id = await self._submit_index_add_documents_job(
             index_id=resolved_index_id,
             document_ids=[file_id],
             chunk_size=chunk_size,
@@ -224,20 +183,20 @@ class BailianKnowledgeBaseService:
             "status": "RUNNING",
         }
         if wait_for_finish:
-            result["job"] = self.wait_for_index_job(
+            result["job"] = await self.wait_for_index_job(
                 index_id=index_id,
                 job_id=job_id,
                 poll_interval_seconds=poll_interval_seconds,
                 timeout_seconds=timeout_seconds,
             )
-            result["documents"] = self.list_index_documents(index_id=index_id)
+            result["documents"] = await self.list_index_documents(index_id=index_id)
             result["status"] = result["job"]["status"]
         return result
 
-    def get_index_job_status(self, *, index_id: str, job_id: str) -> dict[str, Any]:
+    async def get_index_job_status(self, *, index_id: str | None, job_id: str) -> dict[str, Any]:
         resolved_index_id = self.resolve_index_id(index_id)
         request = models.GetIndexJobStatusRequest(index_id=resolved_index_id, job_id=job_id)
-        response = self.client.get_index_job_status(self.settings.workspace_id, request)
+        response = await self.client.get_index_job_status_async(self.settings.workspace_id, request)
         body = self._ensure_success(response.body, "GetIndexJobStatus")
         documents = [
             {
@@ -256,7 +215,7 @@ class BailianKnowledgeBaseService:
             "documents": documents,
         }
 
-    def wait_for_index_job(
+    async def wait_for_index_job(
         self,
         *,
         index_id: str | None,
@@ -264,23 +223,23 @@ class BailianKnowledgeBaseService:
         poll_interval_seconds: int = 3,
         timeout_seconds: int = 300,
     ) -> dict[str, Any]:
-        deadline = time.time() + timeout_seconds
-        while time.time() < deadline:
-            status = self.get_index_job_status(index_id=index_id, job_id=job_id)
+        deadline = asyncio.get_running_loop().time() + timeout_seconds
+        while asyncio.get_running_loop().time() < deadline:
+            status = await self.get_index_job_status(index_id=index_id, job_id=job_id)
             if status["status"] == "FINISH":
                 return status
             if status["status"] in {"FAIL", "FAILED", "ERROR"}:
                 raise BailianServiceError(f"Index job failed: {status}", status_code=502)
-            time.sleep(poll_interval_seconds)
+            await asyncio.sleep(poll_interval_seconds)
         raise BailianServiceError(
             f"Timed out waiting for index job {job_id} to finish.",
             status_code=504,
         )
 
-    def list_index_documents(self, *, index_id: str) -> list[dict[str, Any]]:
+    async def list_index_documents(self, *, index_id: str | None) -> list[dict[str, Any]]:
         resolved_index_id = self.resolve_index_id(index_id)
         request = models.ListIndexDocumentsRequest(index_id=resolved_index_id, page_number=1, page_size=100)
-        response = self.client.list_index_documents(self.settings.workspace_id, request)
+        response = await self.client.list_index_documents_async(self.settings.workspace_id, request)
         body = self._ensure_success(response.body, "ListIndexDocuments")
         return [
             {
@@ -297,7 +256,7 @@ class BailianKnowledgeBaseService:
             for item in (body.data.documents or [])
         ]
 
-    def retrieve(
+    async def retrieve(
         self,
         *,
         index_id: str | None,
@@ -318,7 +277,7 @@ class BailianKnowledgeBaseService:
             enable_reranking=enable_reranking,
             enable_rewrite=enable_rewrite,
         )
-        response = self.client.retrieve(self.settings.workspace_id, request)
+        response = await self.client.retrieve_async(self.settings.workspace_id, request)
         body = self._ensure_success(response.body, "Retrieve")
         return {
             "nodes": [
@@ -332,7 +291,7 @@ class BailianKnowledgeBaseService:
             "request_id": body.request_id,
         }
 
-    def _apply_file_upload_lease(
+    async def _apply_file_upload_lease(
         self,
         *,
         category_id: str,
@@ -347,7 +306,7 @@ class BailianKnowledgeBaseService:
             size_in_bytes=str(len(file_bytes)),
             use_internal_endpoint=False,
         )
-        response = self.client.apply_file_upload_lease(
+        response = await self.client.apply_file_upload_lease_async(
             category_id,
             self.settings.workspace_id,
             request,
@@ -355,7 +314,7 @@ class BailianKnowledgeBaseService:
         body = self._ensure_success(response.body, "ApplyFileUploadLease")
         return body.data
 
-    def _upload_file_to_lease(self, *, file_bytes: bytes, lease: Any) -> None:
+    async def _upload_file_to_lease(self, *, file_bytes: bytes, lease: Any) -> None:
         raw_headers = dict(lease.param.headers or {})
         if "X-bailian-extra" in raw_headers or "Content-Type" in raw_headers:
             headers = {
@@ -369,20 +328,23 @@ class BailianKnowledgeBaseService:
         else:
             headers = {key: value for key, value in raw_headers.items() if value is not None}
 
-        upload_response = requests.request(
-            method=lease.param.method or "PUT",
-            url=lease.param.url,
-            headers=headers,
-            data=file_bytes,
-            timeout=120,
-        )
+        def _send() -> requests.Response:
+            return requests.request(
+                method=lease.param.method or "PUT",
+                url=lease.param.url,
+                headers=headers,
+                data=file_bytes,
+                timeout=120,
+            )
+
+        upload_response = await asyncio.to_thread(_send)
         if upload_response.status_code >= 400:
             raise BailianServiceError(
                 f"Upload file to lease failed with status {upload_response.status_code}: {upload_response.text}",
                 status_code=502,
             )
 
-    def _add_file_record(
+    async def _add_file_record(
         self,
         *,
         category_id: str,
@@ -400,11 +362,11 @@ class BailianKnowledgeBaseService:
             tags=tags,
             original_file_url=original_file_url,
         )
-        response = self.client.add_file(self.settings.workspace_id, request)
+        response = await self.client.add_file_async(self.settings.workspace_id, request)
         body = self._ensure_success(response.body, "AddFile")
         return body.data.file_id
 
-    def _submit_index_add_documents_job(
+    async def _submit_index_add_documents_job(
         self,
         *,
         index_id: str,
@@ -425,7 +387,7 @@ class BailianKnowledgeBaseService:
             separator=separator,
             enable_headers=enable_headers,
         )
-        response = self.client.submit_index_add_documents_job(self.settings.workspace_id, request)
+        response = await self.client.submit_index_add_documents_job_async(self.settings.workspace_id, request)
         body = self._ensure_success(response.body, "SubmitIndexAddDocumentsJob")
         return body.data.id
 
@@ -453,6 +415,6 @@ class BailianKnowledgeBaseService:
 
 def save_upload_to_temp(file_name: str, file_bytes: bytes) -> Path:
     suffix = Path(file_name).suffix
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-        temp_file.write(file_bytes)
-        return Path(temp_file.name)
+    fd, raw_path = tempfile.mkstemp(suffix=suffix)
+    Path(raw_path).write_bytes(file_bytes)
+    return Path(raw_path)

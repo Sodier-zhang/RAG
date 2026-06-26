@@ -43,9 +43,9 @@ def get_service() -> BailianKnowledgeBaseService:
     summary="Create knowledge base",
     description="Create a Bailian document retrieval knowledge base. By default it uses smart chunking with chunk_size=1500 and overlap_size=200. If category_id is omitted, the service creates an empty category first and then creates the knowledge base.",
 )
-def create_knowledge_base(payload: CreateKnowledgeBaseRequest):
+async def create_knowledge_base(payload: CreateKnowledgeBaseRequest):
     try:
-        return get_service().create_knowledge_base(**payload.model_dump())
+        return await get_service().create_knowledge_base(**payload.model_dump())
     except BailianServiceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
@@ -76,7 +76,7 @@ async def upload_document_to_default_knowledge_base(
         tag_list = [item.strip() for item in tags.split(",")] if tags else None
         if tag_list:
             tag_list = [item for item in tag_list if item]
-        return get_service().upload_file_and_add_to_index(
+        return await get_service().upload_file_and_add_to_index(
             index_id=None,
             file_name=file.filename or "upload.bin",
             file_bytes=file_bytes,
@@ -102,9 +102,9 @@ async def upload_document_to_default_knowledge_base(
     "/documents/list",
     summary="List indexed documents using default index",
 )
-def list_default_index_documents():
+async def list_default_index_documents():
     try:
-        return get_service().list_index_documents(index_id=None)
+        return await get_service().list_index_documents(index_id=None)
     except BailianServiceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
@@ -113,8 +113,8 @@ def list_default_index_documents():
     "/retrieve",
     summary="Retrieve using default index",
 )
-def retrieve_with_default_index(payload: RetrieveRequest):
+async def retrieve_with_default_index(payload: RetrieveRequest):
     try:
-        return get_service().retrieve(index_id=None, **payload.model_dump())
+        return await get_service().retrieve(index_id=None, **payload.model_dump())
     except BailianServiceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
