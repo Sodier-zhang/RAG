@@ -1,7 +1,10 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import hashlib
+import os
+import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -416,5 +419,7 @@ class BailianKnowledgeBaseService:
 def save_upload_to_temp(file_name: str, file_bytes: bytes) -> Path:
     suffix = Path(file_name).suffix
     fd, raw_path = tempfile.mkstemp(suffix=suffix)
-    Path(raw_path).write_bytes(file_bytes)
-    return Path(raw_path)
+    os.close(fd)
+    path = Path(raw_path)
+    path.write_bytes(file_bytes)
+    return path
