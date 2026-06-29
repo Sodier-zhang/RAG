@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 import hashlib
@@ -83,6 +83,13 @@ class BailianKnowledgeBaseService:
         rerank_model_name: str | None = None,
     ) -> dict[str, Any]:
         target_category_id = category_id or await self.create_empty_category(name)
+        description = self.normalize_optional_text(description)
+        chunk_mode = self.normalize_chunk_mode(chunk_mode)
+        separator = self.normalize_optional_text(separator)
+
+        if chunk_mode != "regex":
+            separator = None
+
         request = models.CreateIndexRequest(
             name=name,
             description=description,
@@ -187,12 +194,12 @@ class BailianKnowledgeBaseService:
         }
         if wait_for_finish:
             result["job"] = await self.wait_for_index_job(
-                index_id=index_id,
+                index_id=resolved_index_id,
                 job_id=job_id,
                 poll_interval_seconds=poll_interval_seconds,
                 timeout_seconds=timeout_seconds,
             )
-            result["documents"] = await self.list_index_documents(index_id=index_id)
+            result["documents"] = await self.list_index_documents(index_id=resolved_index_id)
             result["status"] = result["job"]["status"]
         return result
 
@@ -229,9 +236,9 @@ class BailianKnowledgeBaseService:
         deadline = asyncio.get_running_loop().time() + timeout_seconds
         while asyncio.get_running_loop().time() < deadline:
             status = await self.get_index_job_status(index_id=index_id, job_id=job_id)
-            if status["status"] == "FINISH":
+            if status["status"] in {"COMPLETED", "FINISH", "SUCCESS"}:
                 return status
-            if status["status"] in {"FAIL", "FAILED", "ERROR"}:
+            if status["status"] in {"FAIL", "FAILED", "ERROR", "CANCELED", "CANCELLED"}:
                 raise BailianServiceError(f"Index job failed: {status}", status_code=502)
             await asyncio.sleep(poll_interval_seconds)
         raise BailianServiceError(

@@ -11,13 +11,13 @@
           "knowledge-bases"
         ],
         "summary": "Create knowledge base",
-        "description": "Create a Bailian document retrieval knowledge base. By default it uses smart chunking with chunk_size=1500 and overlap_size=200. If category_id is omitted, the service creates an empty category first and then creates the knowledge base.",
+        "description": "Create an empty Bailian document retrieval knowledge base. This endpoint only creates the knowledge base metadata and does not upload documents or submit indexing jobs.",
         "operationId": "create_knowledge_base_knowledge_bases_post",
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/x-www-form-urlencoded": {
               "schema": {
-                "$ref": "#/components/schemas/CreateKnowledgeBaseRequest"
+                "$ref": "#/components/schemas/Body_create_knowledge_base_knowledge_bases_post"
               }
             }
           },
@@ -91,6 +91,7 @@
           "knowledge-bases"
         ],
         "summary": "List indexed documents using default index",
+        "description": "List the documents that have already been imported into the default knowledge base. The index ID is resolved from BAILIAN_INDEX_ID, INDEX_ID, or IndexID in the environment.",
         "operationId": "list_default_index_documents_knowledge_bases_documents_list_get",
         "responses": {
           "200": {
@@ -110,6 +111,7 @@
           "knowledge-bases"
         ],
         "summary": "Retrieve using default index",
+        "description": "Search the default knowledge base using the query text and return retrieved chunks. The index ID is resolved from BAILIAN_INDEX_ID, INDEX_ID, or IndexID in the environment.",
         "operationId": "retrieve_with_default_index_knowledge_bases_retrieve_post",
         "requestBody": {
           "content": {
@@ -162,6 +164,123 @@
   },
   "components": {
     "schemas": {
+      "Body_create_knowledge_base_knowledge_bases_post": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "chunk_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Size",
+            "default": 1500
+          },
+          "overlap_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overlap Size",
+            "default": 200
+          },
+          "chunk_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Mode"
+          },
+          "separator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Separator"
+          },
+          "enable_headers": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enable Headers",
+            "default": false
+          },
+          "embedding_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding Model Name",
+            "default": "text-embedding-v4"
+          },
+          "rerank_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerank Model Name",
+            "default": "qwen3-rerank"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "Body_create_knowledge_base_knowledge_bases_post"
+      },
       "Body_upload_document_to_default_knowledge_base_knowledge_bases_documents_post": {
         "properties": {
           "file": {
@@ -292,139 +411,6 @@
           "file"
         ],
         "title": "Body_upload_document_to_default_knowledge_base_knowledge_bases_documents_post"
-      },
-      "CreateKnowledgeBaseRequest": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 1,
-            "title": "Name",
-            "description": "Knowledge base name."
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description",
-            "description": "Knowledge base description."
-          },
-          "category_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category Id",
-            "description": "Optional existing category ID. Leave empty to auto-create a category."
-          },
-          "chunk_size": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 6000.0,
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Chunk Size",
-            "description": "Default chunk size. 1500 is recommended for your current workflow.",
-            "default": 1500
-          },
-          "overlap_size": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 1024.0,
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Overlap Size",
-            "description": "Default overlap size between adjacent chunks.",
-            "default": 200
-          },
-          "chunk_mode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Chunk Mode",
-            "description": "Leave empty to use smart chunking."
-          },
-          "separator": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Separator",
-            "description": "Only used when chunk_mode is regex."
-          },
-          "enable_headers": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Enable Headers",
-            "description": "Enable only for Excel files with header rows.",
-            "default": false
-          },
-          "embedding_model_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Embedding Model Name",
-            "description": "Embedding model used by the knowledge base.",
-            "default": "text-embedding-v4"
-          },
-          "rerank_model_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Rerank Model Name",
-            "description": "Rerank model used during retrieval.",
-            "default": "qwen3-rerank"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "title": "CreateKnowledgeBaseRequest"
       },
       "HTTPValidationError": {
         "properties": {

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
@@ -7,19 +7,6 @@ from app.service.service import BailianKnowledgeBaseService, BailianServiceError
 
 router = APIRouter(prefix="/knowledge-bases", tags=["knowledge-bases"])
 _service: BailianKnowledgeBaseService | None = None
-
-
-class CreateKnowledgeBaseRequest(BaseModel):
-    name: str = Field(..., min_length=1, max_length=20, description="Knowledge base name.")
-    description: str | None = Field(default=None, description="Knowledge base description.")
-    category_id: str | None = Field(default=None, description="Optional existing category ID. Leave empty to auto-create a category.")
-    chunk_size: int | None = Field(default=1500, ge=1, le=6000, description="Default chunk size. 1500 is recommended for your current workflow.")
-    overlap_size: int | None = Field(default=200, ge=0, le=1024, description="Default overlap size between adjacent chunks.")
-    chunk_mode: str | None = Field(default=None, description="Leave empty to use smart chunking.")
-    separator: str | None = Field(default=None, description="Only used when chunk_mode is regex.")
-    enable_headers: bool | None = Field(default=False, description="Enable only for Excel files with header rows.")
-    embedding_model_name: str | None = Field(default="text-embedding-v4", description="Embedding model used by the knowledge base.")
-    rerank_model_name: str | None = Field(default="qwen3-rerank", description="Rerank model used during retrieval.")
 
 
 class RetrieveRequest(BaseModel):
@@ -41,11 +28,33 @@ def get_service() -> BailianKnowledgeBaseService:
 @router.post(
     "",
     summary="Create knowledge base",
-    description="Create a Bailian document retrieval knowledge base. By default it uses smart chunking with chunk_size=1500 and overlap_size=200. If category_id is omitted, the service creates an empty category first and then creates the knowledge base.",
+    description="Create an empty Bailian document retrieval knowledge base. This endpoint only creates the knowledge base metadata and does not upload documents or submit indexing jobs.",
 )
-async def create_knowledge_base(payload: CreateKnowledgeBaseRequest):
+async def create_knowledge_base(
+    name: str = Form(...),
+    description: str | None = Form(default=None),
+    category_id: str | None = Form(default=None),
+    chunk_size: int | None = Form(default=1500),
+    overlap_size: int | None = Form(default=200),
+    chunk_mode: str | None = Form(default=None),
+    separator: str | None = Form(default=None),
+    enable_headers: bool | None = Form(default=False),
+    embedding_model_name: str | None = Form(default="text-embedding-v4"),
+    rerank_model_name: str | None = Form(default="qwen3-rerank"),
+):
     try:
-        return await get_service().create_knowledge_base(**payload.model_dump())
+        return await get_service().create_knowledge_base(
+            name=name,
+            description=description,
+            category_id=category_id,
+            chunk_size=chunk_size,
+            overlap_size=overlap_size,
+            chunk_mode=chunk_mode,
+            separator=separator,
+            enable_headers=enable_headers,
+            embedding_model_name=embedding_model_name,
+            rerank_model_name=rerank_model_name,
+        )
     except BailianServiceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
@@ -101,6 +110,7 @@ async def upload_document_to_default_knowledge_base(
 @router.get(
     "/documents/list",
     summary="List indexed documents using default index",
+    description="List the documents that have already been imported into the default knowledge base. The index ID is resolved from BAILIAN_INDEX_ID, INDEX_ID, or IndexID in the environment.",
 )
 async def list_default_index_documents():
     try:
@@ -112,6 +122,7 @@ async def list_default_index_documents():
 @router.post(
     "/retrieve",
     summary="Retrieve using default index",
+    description="Search the default knowledge base using the query text and return retrieved chunks. The index ID is resolved from BAILIAN_INDEX_ID, INDEX_ID, or IndexID in the environment.",
 )
 async def retrieve_with_default_index(payload: RetrieveRequest):
     try:
